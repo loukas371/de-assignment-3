@@ -1,0 +1,84 @@
+name: Data preprocessing
+inputs:
+- {name: raw_data_path, type: String}
+- {name: prep_data_path, type: String}
+- {name: bucket, type: String}
+outputs:
+- {name: Output, type: String}
+implementation:
+  container:
+    image: python:3.7
+    command:
+    - sh
+    - -c
+    - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+      'pandas' 'scikit-learn' 'fsspec' 'gcsfs' 'google-cloud-storage' || PIP_DISABLE_PIP_VERSION_CHECK=1
+      python3 -m pip install --quiet --no-warn-script-location 'pandas' 'scikit-learn'
+      'fsspec' 'gcsfs' 'google-cloud-storage' --user) && "$0" "$@"
+    - python3
+    - -u
+    - -c
+    - "def data_preprocessing(raw_data_path, prep_data_path, bucket):\n\n    import\
+      \ pandas as pd\n    import numpy as np\n    from sklearn.preprocessing import\
+      \ LabelEncoder, StandardScaler,OneHotEncoder\n    from sklearn.pipeline import\
+      \ make_pipeline,Pipeline\n    from sklearn.compose import make_column_transformer\n\
+      \    from google.cloud import storage    \n    from io import BytesIO\n\n  \
+      \  # client = storage.Client()\n    # file_name = raw_data\n    # bucket = client.get_bucket(bucket_name)\n\
+      \    # blob = bucket.get_blob(raw_data)\n    # content = blob.download_as_string()\n\
+      \    #df = pd.read_csv(BytesIO(content))\n    df = pd.read_csv(bucket + raw_data_path)\n\
+      \n    #deleting unwanted columns\n    drop_columns = ['id','url', 'region',\
+      \ 'region_url','model','title_status', 'title_status','county', 'vin', 'description','size',\
+      \ 'image_url', 'lat','long','state','paint_color','cylinders']\n    df = df.drop(columns=drop_columns)\n\
+      \    #deleting rows with nan values\n    df = df.dropna()\n    #reformatting/cleaning\
+      \ numeric columns\n    df['price'] = df['price'].astype(int)\n    df['year']\
+      \ = df['year'].astype(int)\n    df['odometer'] = df['odometer'].astype(int)\n\
+      \    df['odometer'] = df['odometer'] // 5000\n    df = df[df['year'] > 110]\n\
+      \    df = df[(df['price']>1000) & (df['price']<50000)]\n\n    #reformatting/cleaning\
+      \ categorical columns\n    df['manufacturer'] = df['manufacturer'].astype(str)\n\
+      \    df['condition'] = df['condition'].astype(str)\n    # df['cylinders'] =\
+      \ df['cylinders'].astype(str)\n    df['fuel'] = df['fuel'].astype(str)\n   \
+      \ df['transmission'] = df['transmission'].astype(str)\n    df['drive'] = df['drive'].astype(str)\n\
+      \    df['type'] = df['type'].astype(str)\n    df=df[df['transmission']!='other']\n\
+      \    df=df.reset_index()\n\n    #label encode columns\n\n    lab_cat_columns=['condition','transmission']\n\
+      \n    for col in lab_cat_columns:\n        if col in df.columns:\n         \
+      \   le = LabelEncoder()\n            le.fit(list(df[col].astype(str).values))\n\
+      \            df[col] = le.transform(list(df[col].astype(str).values))\n\n  \
+      \  #Creating pipeline\n\n    numerical_features=['year', 'odometer']\n    one_hot_cat_columns=['manufacturer','fuel','drive','type']\n\
+      \n    categoric_transformer = make_pipeline(OneHotEncoder(sparse=False,handle_unknown='ignore'))\n\
+      \n    # Creating a pipeline with mean imputer for numerical data \n    numeric_transformer\
+      \ =  make_pipeline(StandardScaler())  \n\n    #Creating label transformer\n\n\
+      \    # label_transformer=make_pipeline(LabelEncoder())\n\n    # Combining both\
+      \ pipelines such that each pipeline works on the columns it was meant for\n\
+      \    preprocessor = make_column_transformer((categoric_transformer,one_hot_cat_columns),\n\
+      \                                            (numeric_transformer,numerical_features))\n\
+      \    #                                           (label_transformer,lab_cat_columns))\n\
+      \n    pipe=Pipeline(steps = [('prep',preprocessor)])\n    results=pipe.fit_transform(df)\n\
+      \    results=pd.DataFrame(data=results, columns=list(pd.get_dummies(df[one_hot_cat_columns]).columns)+numerical_features\
+      \ )\n\n    final_df=results\n    # final_df['year']=df['year']\n    # final_df['odometer']=df['odometer']\n\
+      \    final_df['condition']=df['condition']\n    final_df['transmission']=df['transmission']\n\
+      \    final_df['price']=df['price']\n\n    final_df.to_csv(bucket + prep_data_path)\n\
+      \    return prep_data_path\n\ndef _serialize_str(str_value: str) -> str:\n \
+      \   if not isinstance(str_value, str):\n        raise TypeError('Value \"{}\"\
+      \ has type \"{}\" instead of str.'.format(str(str_value), str(type(str_value))))\n\
+      \    return str_value\n\nimport argparse\n_parser = argparse.ArgumentParser(prog='Data\
+      \ preprocessing', description='')\n_parser.add_argument(\"--raw-data-path\"\
+      , dest=\"raw_data_path\", type=str, required=True, default=argparse.SUPPRESS)\n\
+      _parser.add_argument(\"--prep-data-path\", dest=\"prep_data_path\", type=str,\
+      \ required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--bucket\"\
+      , dest=\"bucket\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"\
+      ----output-paths\", dest=\"_output_paths\", type=str, nargs=1)\n_parsed_args\
+      \ = vars(_parser.parse_args())\n_output_files = _parsed_args.pop(\"_output_paths\"\
+      , [])\n\n_outputs = data_preprocessing(**_parsed_args)\n\n_outputs = [_outputs]\n\
+      \n_output_serializers = [\n    _serialize_str,\n\n]\n\nimport os\nfor idx, output_file\
+      \ in enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n\
+      \    except OSError:\n        pass\n    with open(output_file, 'w') as f:\n\
+      \        f.write(_output_serializers[idx](_outputs[idx]))\n"
+    args:
+    - --raw-data-path
+    - {inputValue: raw_data_path}
+    - --prep-data-path
+    - {inputValue: prep_data_path}
+    - --bucket
+    - {inputValue: bucket}
+    - '----output-paths'
+    - {outputPath: Output}
