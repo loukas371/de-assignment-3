@@ -1,0 +1,71 @@
+name: Lin model training
+inputs:
+- {name: prep_data_path, type: String}
+- {name: bucket, type: String}
+- {name: bucket_name, type: String}
+- {name: lin_model_path, type: String}
+outputs:
+- {name: Output, type: String}
+implementation:
+  container:
+    image: python:3.7
+    command:
+    - sh
+    - -c
+    - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+      'pandas' 'scikit-learn' 'fsspec' 'gcsfs' 'google-cloud-storage' || PIP_DISABLE_PIP_VERSION_CHECK=1
+      python3 -m pip install --quiet --no-warn-script-location 'pandas' 'scikit-learn'
+      'fsspec' 'gcsfs' 'google-cloud-storage' --user) && "$0" "$@"
+    - python3
+    - -u
+    - -c
+    - "def lin_model_training(prep_data_path, bucket, bucket_name, lin_model_path):\n\
+      \n    import pandas as pd\n    import numpy as np\n    from google.cloud import\
+      \ storage  \n    from sklearn.model_selection import train_test_split\n    import\
+      \ _pickle as cPickle \n    from sklearn import metrics\n    from sklearn.linear_model\
+      \ import LinearRegression\n\n    df = pd.read_csv(bucket + prep_data_path)\n\
+      \n    #Seperating dataset and target variable\n    target_name = 'price'\n \
+      \   df_target = df[target_name]\n    df = df.drop([target_name], axis=1)\n \
+      \   #Train test split\n    train, test, target, target_test = train_test_split(df,\
+      \ df_target, test_size=0.2, random_state=0)\n    #return [train, test, target,\
+      \ target_test]\n\n    linreg = LinearRegression()\n    linreg.fit(train, target)\n\
+      \    score=linreg.score(train, target)\n    y_pred=linreg.predict(test)\n  \
+      \  # # values_predictions = pd.DataFrame({'Actual': target_test, 'Predicted':\
+      \ predictions})\n    # print('Mean Absolute Error:', metrics.mean_absolute_error(target_test,\
+      \ y_pred))\n    # print('Mean Squared Error:', metrics.mean_squared_error(target_test,\
+      \ y_pred))\n    # print('Root Mean Squared Error:', np.sqrt(metrics.mean_squared_error(target_test,\
+      \ y_pred)))\n    print('R^2 on the train set', score)\n    print('R^2 on the\
+      \ test set', metrics.r2_score(target_test, y_pred))\n\n    temp_model_path='/tmp/lin_model.pickle'\n\
+      \    with open(temp_model_path, 'wb') as f:\n        cPickle.dump(linreg, f,\
+      \ -1)\n\n    # parse = urlparse(url=tuned_model_path, allow_fragments=False)\n\
+      \n    # if parse.path[0] =='/':\n    #     model_path = parse.path[1:]\n   \
+      \ client = storage.Client()\n    bucket = client.get_bucket(bucket_name)\n \
+      \   model = bucket.blob(lin_model_path)\n    model.upload_from_filename(temp_model_path)\n\
+      \    return lin_model_path\n\ndef _serialize_str(str_value: str) -> str:\n \
+      \   if not isinstance(str_value, str):\n        raise TypeError('Value \"{}\"\
+      \ has type \"{}\" instead of str.'.format(str(str_value), str(type(str_value))))\n\
+      \    return str_value\n\nimport argparse\n_parser = argparse.ArgumentParser(prog='Lin\
+      \ model training', description='')\n_parser.add_argument(\"--prep-data-path\"\
+      , dest=\"prep_data_path\", type=str, required=True, default=argparse.SUPPRESS)\n\
+      _parser.add_argument(\"--bucket\", dest=\"bucket\", type=str, required=True,\
+      \ default=argparse.SUPPRESS)\n_parser.add_argument(\"--bucket-name\", dest=\"\
+      bucket_name\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"\
+      --lin-model-path\", dest=\"lin_model_path\", type=str, required=True, default=argparse.SUPPRESS)\n\
+      _parser.add_argument(\"----output-paths\", dest=\"_output_paths\", type=str,\
+      \ nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files = _parsed_args.pop(\"\
+      _output_paths\", [])\n\n_outputs = lin_model_training(**_parsed_args)\n\n_outputs\
+      \ = [_outputs]\n\n_output_serializers = [\n    _serialize_str,\n\n]\n\nimport\
+      \ os\nfor idx, output_file in enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n\
+      \    except OSError:\n        pass\n    with open(output_file, 'w') as f:\n\
+      \        f.write(_output_serializers[idx](_outputs[idx]))\n"
+    args:
+    - --prep-data-path
+    - {inputValue: prep_data_path}
+    - --bucket
+    - {inputValue: bucket}
+    - --bucket-name
+    - {inputValue: bucket_name}
+    - --lin-model-path
+    - {inputValue: lin_model_path}
+    - '----output-paths'
+    - {outputPath: Output}

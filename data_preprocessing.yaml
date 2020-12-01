@@ -2,6 +2,7 @@ name: Data preprocessing
 inputs:
 - {name: raw_data_path, type: String}
 - {name: prep_data_path, type: String}
+- {name: test_data_path, type: String}
 - {name: bucket, type: String}
 outputs:
 - {name: Output, type: String}
@@ -18,10 +19,10 @@ implementation:
     - python3
     - -u
     - -c
-    - "def data_preprocessing(raw_data_path, prep_data_path, bucket):\n\n    import\
-      \ pandas as pd\n    import numpy as np\n    from sklearn.preprocessing import\
-      \ LabelEncoder, StandardScaler,OneHotEncoder\n    from sklearn.pipeline import\
-      \ make_pipeline,Pipeline\n    from sklearn.compose import make_column_transformer\n\
+    - "def data_preprocessing(raw_data_path, prep_data_path, test_data_path, bucket):\n\
+      \n    import pandas as pd\n    import numpy as np\n    from sklearn.preprocessing\
+      \ import LabelEncoder, StandardScaler,OneHotEncoder\n    from sklearn.pipeline\
+      \ import make_pipeline,Pipeline\n    from sklearn.compose import make_column_transformer\n\
       \    from google.cloud import storage    \n    from io import BytesIO\n\n  \
       \  # client = storage.Client()\n    # file_name = raw_data\n    # bucket = client.get_bucket(bucket_name)\n\
       \    # blob = bucket.get_blob(raw_data)\n    # content = blob.download_as_string()\n\
@@ -32,7 +33,7 @@ implementation:
       \    #deleting rows with nan values\n    df = df.dropna()\n    #reformatting/cleaning\
       \ numeric columns\n    df['price'] = df['price'].astype(int)\n    df['year']\
       \ = df['year'].astype(int)\n    df['odometer'] = df['odometer'].astype(int)\n\
-      \    df['odometer'] = df['odometer'] // 5000\n    df = df[df['year'] > 110]\n\
+      \    df['odometer'] = df['odometer'] // 5000\n    df = df[df['year'] > 1950]\n\
       \    df = df[(df['price']>1000) & (df['price']<50000)]\n\n    #reformatting/cleaning\
       \ categorical columns\n    df['manufacturer'] = df['manufacturer'].astype(str)\n\
       \    df['condition'] = df['condition'].astype(str)\n    # df['cylinders'] =\
@@ -56,28 +57,33 @@ implementation:
       \    results=pd.DataFrame(data=results, columns=list(pd.get_dummies(df[one_hot_cat_columns]).columns)+numerical_features\
       \ )\n\n    final_df=results\n    # final_df['year']=df['year']\n    # final_df['odometer']=df['odometer']\n\
       \    final_df['condition']=df['condition']\n    final_df['transmission']=df['transmission']\n\
-      \    final_df['price']=df['price']\n\n    final_df.to_csv(bucket + prep_data_path)\n\
-      \    return prep_data_path\n\ndef _serialize_str(str_value: str) -> str:\n \
-      \   if not isinstance(str_value, str):\n        raise TypeError('Value \"{}\"\
-      \ has type \"{}\" instead of str.'.format(str(str_value), str(type(str_value))))\n\
+      \    final_df['price']=df['price']\n\n    training_df = final_df.sample(frac=0.7,random_state=\
+      \ 0)\n    test_df= final_df.drop(training_df.index)\n\n    training_df.to_csv(bucket\
+      \ + prep_data_path, index=False)\n    test_df.to_csv(bucket + test_data_path,\
+      \ index=False)\n\n    return prep_data_path\n\ndef _serialize_str(str_value:\
+      \ str) -> str:\n    if not isinstance(str_value, str):\n        raise TypeError('Value\
+      \ \"{}\" has type \"{}\" instead of str.'.format(str(str_value), str(type(str_value))))\n\
       \    return str_value\n\nimport argparse\n_parser = argparse.ArgumentParser(prog='Data\
       \ preprocessing', description='')\n_parser.add_argument(\"--raw-data-path\"\
       , dest=\"raw_data_path\", type=str, required=True, default=argparse.SUPPRESS)\n\
       _parser.add_argument(\"--prep-data-path\", dest=\"prep_data_path\", type=str,\
-      \ required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--bucket\"\
-      , dest=\"bucket\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"\
-      ----output-paths\", dest=\"_output_paths\", type=str, nargs=1)\n_parsed_args\
-      \ = vars(_parser.parse_args())\n_output_files = _parsed_args.pop(\"_output_paths\"\
-      , [])\n\n_outputs = data_preprocessing(**_parsed_args)\n\n_outputs = [_outputs]\n\
-      \n_output_serializers = [\n    _serialize_str,\n\n]\n\nimport os\nfor idx, output_file\
-      \ in enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n\
-      \    except OSError:\n        pass\n    with open(output_file, 'w') as f:\n\
-      \        f.write(_output_serializers[idx](_outputs[idx]))\n"
+      \ required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--test-data-path\"\
+      , dest=\"test_data_path\", type=str, required=True, default=argparse.SUPPRESS)\n\
+      _parser.add_argument(\"--bucket\", dest=\"bucket\", type=str, required=True,\
+      \ default=argparse.SUPPRESS)\n_parser.add_argument(\"----output-paths\", dest=\"\
+      _output_paths\", type=str, nargs=1)\n_parsed_args = vars(_parser.parse_args())\n\
+      _output_files = _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = data_preprocessing(**_parsed_args)\n\
+      \n_outputs = [_outputs]\n\n_output_serializers = [\n    _serialize_str,\n\n\
+      ]\n\nimport os\nfor idx, output_file in enumerate(_output_files):\n    try:\n\
+      \        os.makedirs(os.path.dirname(output_file))\n    except OSError:\n  \
+      \      pass\n    with open(output_file, 'w') as f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"
     args:
     - --raw-data-path
     - {inputValue: raw_data_path}
     - --prep-data-path
     - {inputValue: prep_data_path}
+    - --test-data-path
+    - {inputValue: test_data_path}
     - --bucket
     - {inputValue: bucket}
     - '----output-paths'
