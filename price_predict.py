@@ -29,7 +29,8 @@ def preprocess(new_cars):
     transmissions = {'manual': 0, 'automatic': 1}
 
     now = datetime.datetime.now()
-
+    
+    #check for faulty values
     for car in new_cars:
         if car['condition'] not in list(conditions.keys()):
             problematic_car = car.copy()
@@ -49,6 +50,7 @@ def preprocess(new_cars):
 
     encoded_df = pd.DataFrame(columns=df_cols)
 
+    #recreate one-hot-encoded colums and the rest
     for car in new_cars:
         new_row_dict = {}
         for col in df_cols:
@@ -102,7 +104,6 @@ def predict_perf(argv=None):
 
     js_str_ = json.dumps(content)
     dicts = json.loads(js_str_)
-    #print(type(dict_[0]['sepal_length']))
 
     try:
         #read the logs file to add new results
@@ -129,10 +130,7 @@ def predict_perf(argv=None):
         model_bytestream = BytesIO(blob.download_as_string())
         model = cPickle.load(model_bytestream)
 
-        #result_df= prep_cars.copy()
-
         pred_result = model.predict(prep_cars)
-        print(pred_result)
 
         for i, car in enumerate(dicts):
             car['price']=str(pred_result[i])
@@ -141,23 +139,23 @@ def predict_perf(argv=None):
             log['error']= ''
             logs_df = logs_df.append(log, ignore_index=True)
 
-        
+        #save results to log
         logs_df.to_csv(known_args.bucket+ '/logs/logs.csv', index=False)
+        
+        #return response as JSON
         js_result=json.dumps(dicts, indent=4, sort_keys=False)
-
-
         resp = Response(js_result, status=200, mimetype='application/json')
         resp.headers['Access-Control-Allow-Origin'] = '*'
         resp.headers['Access-Control-Allow-Methods'] = 'POST'
         resp.headers['Access-Control-Max-Age'] = '1000'
         return resp
     else:
-        #logs_df = logs_df.append({'result': 'error', 'message': result['error'] }, ignore_index=True)
+         #save result to logs
         logs_df = logs_df.append(result , ignore_index=True)
         logs_df.to_csv(known_args.bucket+ '/logs/logs.csv', index=False)
         
+        #return response as JSON
         js_result=json.dumps(result, indent=4, sort_keys=False)
-
         resp = Response(js_result, status=200, mimetype='application/json')
         resp.headers['Access-Control-Allow-Origin'] = '*'
         resp.headers['Access-Control-Allow-Methods'] = 'POST'

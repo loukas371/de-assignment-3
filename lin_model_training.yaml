@@ -27,20 +27,13 @@ implementation:
       \n    #Seperating dataset and target variable\n    target_name = 'price'\n \
       \   df_target = df[target_name]\n    df = df.drop([target_name], axis=1)\n \
       \   #Train test split\n    train, test, target, target_test = train_test_split(df,\
-      \ df_target, test_size=0.2, random_state=0)\n    #return [train, test, target,\
-      \ target_test]\n\n    linreg = LinearRegression()\n    linreg.fit(train, target)\n\
-      \    score=linreg.score(train, target)\n    y_pred=linreg.predict(test)\n  \
-      \  # # values_predictions = pd.DataFrame({'Actual': target_test, 'Predicted':\
-      \ predictions})\n    # print('Mean Absolute Error:', metrics.mean_absolute_error(target_test,\
-      \ y_pred))\n    # print('Mean Squared Error:', metrics.mean_squared_error(target_test,\
-      \ y_pred))\n    # print('Root Mean Squared Error:', np.sqrt(metrics.mean_squared_error(target_test,\
-      \ y_pred)))\n    print('R^2 on the train set', score)\n    print('R^2 on the\
-      \ test set', metrics.r2_score(target_test, y_pred))\n\n    temp_model_path='/tmp/lin_model.pickle'\n\
+      \ df_target, test_size=0.2, random_state=0)\n\n    linreg = LinearRegression()\n\
+      \    linreg.fit(train, target)\n    score=linreg.score(train, target)\n    y_pred=linreg.predict(test)\n\
+      \n    print('R^2 on the train set', score)\n    print('R^2 on the test set',\
+      \ metrics.r2_score(target_test, y_pred))\n\n    temp_model_path='/tmp/lin_model.pickle'\n\
       \    with open(temp_model_path, 'wb') as f:\n        cPickle.dump(linreg, f,\
-      \ -1)\n\n    # parse = urlparse(url=tuned_model_path, allow_fragments=False)\n\
-      \n    # if parse.path[0] =='/':\n    #     model_path = parse.path[1:]\n   \
-      \ client = storage.Client()\n    bucket = client.get_bucket(bucket_name)\n \
-      \   model = bucket.blob(lin_model_path)\n    model.upload_from_filename(temp_model_path)\n\
+      \ -1)\n\n    client = storage.Client()\n    bucket = client.get_bucket(bucket_name)\n\
+      \    model = bucket.blob(lin_model_path)\n    model.upload_from_filename(temp_model_path)\n\
       \    return lin_model_path\n\ndef _serialize_str(str_value: str) -> str:\n \
       \   if not isinstance(str_value, str):\n        raise TypeError('Value \"{}\"\
       \ has type \"{}\" instead of str.'.format(str(str_value), str(type(str_value))))\n\

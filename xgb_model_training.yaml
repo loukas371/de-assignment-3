@@ -28,19 +28,16 @@ implementation:
       \ prep_data_path)\n\n    #Seperating dataset and target variable\n    target_name\
       \ = 'price'\n    df_target = df[target_name]\n    df = df.drop([target_name],\
       \ axis=1)\n    #Train test split\n    train, test, target, target_test = train_test_split(df,\
-      \ df_target, test_size=0.2, random_state=0)\n\n    #{'objective': 'reg:squarederror'}\n\
-      \    xgb_clf = xgb.XGBRegressor() \n    parameters = {'n_estimators': [60, 100,\
-      \ 120, 140], \n              'learning_rate': [0.01, 0.1],\n              'max_depth':\
-      \ [5, 7],\n              'reg_lambda': [0.5]}\n    xgb_reg = GridSearchCV(estimator=xgb_clf,\
-      \ param_grid=parameters, cv=5, n_jobs=-1).fit(train, target)\n    print(\"Best\
-      \ score: %0.3f\" % xgb_reg.best_score_)\n    print(\"Best parameters set:\"\
-      , xgb_reg.best_params_)\n\n    ypred = xgb_reg.predict(test)\n    print('R2\
-      \ score', metrics.r2_score(target_test, ypred))\n\n    temp_model_path='/tmp/xgb_model.pickle'\n\
+      \ df_target, test_size=0.2, random_state=0)\n\n    xgb_clf = xgb.XGBRegressor()\
+      \ \n    parameters = {'n_estimators': [60, 100, 120, 140], \n              'learning_rate':\
+      \ [0.01, 0.1],\n              'max_depth': [5, 7],\n              'reg_lambda':\
+      \ [0.5]}\n    xgb_reg = GridSearchCV(estimator=xgb_clf, param_grid=parameters,\
+      \ cv=5, n_jobs=-1).fit(train, target)\n    print(\"Best score: %0.3f\" % xgb_reg.best_score_)\n\
+      \    print(\"Best parameters set:\", xgb_reg.best_params_)\n\n    ypred = xgb_reg.predict(test)\n\
+      \    print('R2 score', metrics.r2_score(target_test, ypred))\n\n    temp_model_path='/tmp/xgb_model.pickle'\n\
       \    with open(temp_model_path, 'wb') as f:\n        cPickle.dump(xgb_reg, f,\
-      \ -1)\n\n    # parse = urlparse(url=tuned_model_path, allow_fragments=False)\n\
-      \n    # if parse.path[0] =='/':\n    #     model_path = parse.path[1:]\n   \
-      \ client = storage.Client()\n    bucket = client.get_bucket(bucket_name)\n \
-      \   blob = bucket.blob(xgb_model_path)\n    blob.upload_from_filename(temp_model_path)\n\
+      \ -1)\n\n    client = storage.Client()\n    bucket = client.get_bucket(bucket_name)\n\
+      \    blob = bucket.blob(xgb_model_path)\n    blob.upload_from_filename(temp_model_path)\n\
       \    return xgb_model_path\n\ndef _serialize_str(str_value: str) -> str:\n \
       \   if not isinstance(str_value, str):\n        raise TypeError('Value \"{}\"\
       \ has type \"{}\" instead of str.'.format(str(str_value), str(type(str_value))))\n\

@@ -38,11 +38,11 @@ implementation:
       \ df['cylinders'].astype(str)\n    df['fuel'] = df['fuel'].astype(str)\n   \
       \ df['transmission'] = df['transmission'].astype(str)\n    df['drive'] = df['drive'].astype(str)\n\
       \    df['type'] = df['type'].astype(str)\n    df=df[df['transmission']!='other']\n\
-      \    df=df.reset_index()\n\n    #label encode columns\n\n    lab_cat_columns=['condition','transmission']\n\
-      \n    for col in lab_cat_columns:\n        if col in df.columns:\n         \
-      \   le = LabelEncoder()\n            le.fit(list(df[col].astype(str).values))\n\
-      \            df[col] = le.transform(list(df[col].astype(str).values))\n\n  \
-      \  #Creating pipeline\n\n    numerical_features=['year', 'odometer']\n    one_hot_cat_columns=['manufacturer','fuel','drive','type']\n\
+      \    df=df.reset_index()\n\n    #label encode columns\n\n    conditions = {'salvage':\
+      \ 0, 'fair': 1, 'good': 2, 'excellent': 3, 'like new': 4, 'new': 5}\n    df['condition'].replace(conditions,\
+      \ inplace=True)\n\n    transmissions={'automatic': 1, 'manual': 0}\n    df['transmission'].replace(transmissions,\
+      \ inplace=True)      \n\n    #Creating pipeline\n\n    numerical_features=['year',\
+      \ 'odometer']\n    one_hot_cat_columns=['manufacturer','fuel','drive','type']\n\
       \n    categoric_transformer = make_pipeline(OneHotEncoder(sparse=False,handle_unknown='ignore'))\n\
       \n    # Creating a pipeline with mean imputer for numerical data \n    numeric_transformer\
       \ =  make_pipeline(StandardScaler())  \n\n    # Combining both pipelines such\
@@ -52,16 +52,16 @@ implementation:
       \    #                                           (label_transformer,lab_cat_columns))\n\
       \n    pipe=Pipeline(steps = [('prep',preprocessor)])\n    results=pipe.fit_transform(df)\n\
       \    results=pd.DataFrame(data=results, columns=list(pd.get_dummies(df[one_hot_cat_columns]).columns)+numerical_features\
-      \ )\n\n    final_df=results\n    # final_df['year']=df['year']\n    # final_df['odometer']=df['odometer']\n\
-      \    final_df['condition']=df['condition']\n    final_df['transmission']=df['transmission']\n\
-      \    final_df['price']=df['price']\n\n    training_df = final_df.sample(frac=0.7,random_state=\
-      \ 0)\n    test_df= final_df.drop(training_df.index)\n\n    training_df.to_csv(bucket\
-      \ + prep_data_path, index=False)\n    test_df.to_csv(bucket + test_data_path,\
-      \ index=False)\n\n    columns_series = pd.Series(training_df.columns, dtype='string',\
-      \ name='train_df_columns')\n    columns_series.to_csv(bucket + train_columns_path,\
-      \ index=False)\n\n    return prep_data_path\n\ndef _serialize_str(str_value:\
-      \ str) -> str:\n    if not isinstance(str_value, str):\n        raise TypeError('Value\
-      \ \"{}\" has type \"{}\" instead of str.'.format(str(str_value), str(type(str_value))))\n\
+      \ )\n\n    final_df=results\n\n    final_df['condition']=df['condition']\n \
+      \   final_df['transmission']=df['transmission']\n    final_df['price']=df['price']\n\
+      \n    training_df = final_df.sample(frac=0.7,random_state= 0)\n    test_df=\
+      \ final_df.drop(training_df.index)\n\n    training_df.to_csv(bucket + prep_data_path,\
+      \ index=False)\n    test_df.to_csv(bucket + test_data_path, index=False)\n\n\
+      \    columns_series = pd.Series(training_df.columns, dtype='string', name='train_df_columns')\n\
+      \    columns_series.to_csv(bucket + train_columns_path, index=False)\n\n   \
+      \ return prep_data_path\n\ndef _serialize_str(str_value: str) -> str:\n    if\
+      \ not isinstance(str_value, str):\n        raise TypeError('Value \"{}\" has\
+      \ type \"{}\" instead of str.'.format(str(str_value), str(type(str_value))))\n\
       \    return str_value\n\nimport argparse\n_parser = argparse.ArgumentParser(prog='Data\
       \ preprocessing', description='')\n_parser.add_argument(\"--raw-data-path\"\
       , dest=\"raw_data_path\", type=str, required=True, default=argparse.SUPPRESS)\n\

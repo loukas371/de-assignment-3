@@ -28,26 +28,21 @@ implementation:
       \ target variable\n    target_name = 'price'\n    df_target = df[target_name]\n\
       \    df = df.drop([target_name], axis=1)\n    #Train test split\n    train,\
       \ test, target, target_test = train_test_split(df, df_target, test_size=0.2,\
-      \ random_state=0)\n    #return [train, test, target, target_test]\n\n    #read\
-      \ preprocessed data\n    #train, test, target, target_test = _read_and_split_data(prep_data_path,\
-      \ bucket)\n    #Tuning RF Parameters\n    rf_param_grid = {'n_estimators': [100,\
-      \ 300, 500],\n                'max_features': [0.5, 0.8]\n                }\n\
-      \    rf_GS = GridSearchCV(RandomForestRegressor(n_jobs=-1), param_grid=rf_param_grid,\n\
+      \ random_state=0)\n\n    #Tuning RF Parameters\n    rf_param_grid = {'n_estimators':\
+      \ [100, 300, 500],\n                'max_features': [0.5, 0.8]\n           \
+      \     }\n    rf_GS = GridSearchCV(RandomForestRegressor(n_jobs=-1), param_grid=rf_param_grid,\n\
       \                    cv=ShuffleSplit(n_splits=3,random_state=1), verbose=False,\
       \ pre_dispatch='2*n_jobs')\n\n    rf_GS.fit(train, target)\n\n    score=rf_GS.score(train,\
-      \ target)\n    y_pred=rf_GS.predict(test)\n    #print('R^2 on the train set',\
-      \ score)\n    print('R2 score', metrics.r2_score(target_test, y_pred))\n\n \
-      \   temp_model_path='/tmp/rf_model.pickle'\n    with open(temp_model_path, 'wb')\
-      \ as f:\n        cPickle.dump(rf_GS, f, -1)\n\n    # parse = urlparse(url=tuned_model_path,\
-      \ allow_fragments=False)\n\n    # if parse.path[0] =='/':\n    #     model_path\
-      \ = parse.path[1:]\n    client = storage.Client()\n    bucket = client.get_bucket(bucket_name)\n\
-      \    model = bucket.blob(rf_model_path)\n    model.upload_from_filename(temp_model_path)\n\
-      \    return rf_model_path\n\ndef _serialize_str(str_value: str) -> str:\n  \
-      \  if not isinstance(str_value, str):\n        raise TypeError('Value \"{}\"\
-      \ has type \"{}\" instead of str.'.format(str(str_value), str(type(str_value))))\n\
-      \    return str_value\n\nimport argparse\n_parser = argparse.ArgumentParser(prog='Rf\
-      \ model training', description='')\n_parser.add_argument(\"--prep-data-path\"\
-      , dest=\"prep_data_path\", type=str, required=True, default=argparse.SUPPRESS)\n\
+      \ target)\n    y_pred=rf_GS.predict(test)\n    print('R2 score', metrics.r2_score(target_test,\
+      \ y_pred))\n\n    temp_model_path='/tmp/rf_model.pickle'\n    with open(temp_model_path,\
+      \ 'wb') as f:\n        cPickle.dump(rf_GS, f, -1)\n\n    client = storage.Client()\n\
+      \    bucket = client.get_bucket(bucket_name)\n    model = bucket.blob(rf_model_path)\n\
+      \    model.upload_from_filename(temp_model_path)\n    return rf_model_path\n\
+      \ndef _serialize_str(str_value: str) -> str:\n    if not isinstance(str_value,\
+      \ str):\n        raise TypeError('Value \"{}\" has type \"{}\" instead of str.'.format(str(str_value),\
+      \ str(type(str_value))))\n    return str_value\n\nimport argparse\n_parser =\
+      \ argparse.ArgumentParser(prog='Rf model training', description='')\n_parser.add_argument(\"\
+      --prep-data-path\", dest=\"prep_data_path\", type=str, required=True, default=argparse.SUPPRESS)\n\
       _parser.add_argument(\"--bucket\", dest=\"bucket\", type=str, required=True,\
       \ default=argparse.SUPPRESS)\n_parser.add_argument(\"--bucket-name\", dest=\"\
       bucket_name\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"\
