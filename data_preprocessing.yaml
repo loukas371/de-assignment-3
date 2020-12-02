@@ -25,18 +25,15 @@ implementation:
       \ import LabelEncoder, StandardScaler,OneHotEncoder\n    from sklearn.pipeline\
       \ import make_pipeline,Pipeline\n    from sklearn.compose import make_column_transformer\n\
       \    from google.cloud import storage    \n    from io import BytesIO\n\n  \
-      \  # client = storage.Client()\n    # file_name = raw_data\n    # bucket = client.get_bucket(bucket_name)\n\
-      \    # blob = bucket.get_blob(raw_data)\n    # content = blob.download_as_string()\n\
-      \    #df = pd.read_csv(BytesIO(content))\n    df = pd.read_csv(bucket + raw_data_path)\n\
-      \n    #deleting unwanted columns\n    drop_columns = ['id','url', 'region',\
-      \ 'region_url','model','title_status', 'title_status','county', 'vin', 'description','size',\
-      \ 'image_url', 'lat','long','state','paint_color','cylinders']\n    df = df.drop(columns=drop_columns)\n\
-      \    #deleting rows with nan values\n    df = df.dropna()\n    #reformatting/cleaning\
-      \ numeric columns\n    df['price'] = df['price'].astype(int)\n    df['year']\
-      \ = df['year'].astype(int)\n    df['odometer'] = df['odometer'].astype(int)\n\
-      \    df['odometer'] = df['odometer'] // 5000\n    df = df[df['year'] > 1950]\n\
-      \    df = df[(df['price']>1000) & (df['price']<50000)]\n\n    #reformatting/cleaning\
-      \ categorical columns\n    df['manufacturer'] = df['manufacturer'].astype(str)\n\
+      \  df = pd.read_csv(bucket + raw_data_path)\n\n    #deleting unwanted columns\n\
+      \    drop_columns = ['id','url', 'region', 'region_url','model','title_status',\
+      \ 'title_status','county', 'vin', 'description','size', 'image_url', 'lat','long','state','paint_color','cylinders']\n\
+      \    df = df.drop(columns=drop_columns)\n    #deleting rows with nan values\n\
+      \    df = df.dropna()\n    #reformatting/cleaning numeric columns\n    df['price']\
+      \ = df['price'].astype(int)\n    df['year'] = df['year'].astype(int)\n    df['odometer']\
+      \ = df['odometer'].astype(int)\n    df['odometer'] = df['odometer'] // 5000\n\
+      \    df = df[df['year'] > 1950]\n    df = df[(df['price']>1000) & (df['price']<50000)]\n\
+      \n    #reformatting/cleaning categorical columns\n    df['manufacturer'] = df['manufacturer'].astype(str)\n\
       \    df['condition'] = df['condition'].astype(str)\n    # df['cylinders'] =\
       \ df['cylinders'].astype(str)\n    df['fuel'] = df['fuel'].astype(str)\n   \
       \ df['transmission'] = df['transmission'].astype(str)\n    df['drive'] = df['drive'].astype(str)\n\

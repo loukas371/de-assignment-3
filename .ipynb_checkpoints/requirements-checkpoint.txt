@@ -1,5 +1,6 @@
 numpy
 pandas
+google-cloud-storage
 scikit-learn
 scipy
 xgboost

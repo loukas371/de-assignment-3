@@ -8,6 +8,7 @@ from sklearn.pipeline import make_pipeline,Pipeline
 from sklearn.compose import make_column_transformer
 from io import BytesIO
 import datetime
+import argparse
 
 
 #from resources import predictor
@@ -79,20 +80,25 @@ def preprocess(new_cars):
                 new_row_dict[col]= car[col]
             elif col=='odometer': 
                 new_row_dict[col]= car[col]
-        #print (new_row_dict)
         encoded_df = encoded_df.append(new_row_dict, ignore_index=True)
 
-        #encoded_df.info()
     encoded_df = encoded_df.astype('float64')
     return {'message': 'success', 'df': encoded_df}
 
 
 @app.route('/price-predict', methods=['POST'])
-def predict_perf():
-    content = request.get_json()
-    #print(content)
+def predict_perf(argv=None):
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+      '--bucket',
+      dest='bucket',
+      default='gs://de-3',
+      help='google cloud storage bucket LINK to read and write files, for example gs://data-engineering-3')
+    known_args, _ = parser.parse_known_args(argv)
 
-    #test_df = pd.read_json(json.dumps(content), orient='records')
+    print(known_args.bucket)
+    content = request.get_json()
 
     js_str_ = json.dumps(content)
     dicts = json.loads(js_str_)
@@ -100,7 +106,7 @@ def predict_perf():
 
     try:
         #read the logs file to add new results
-        logs_df = pd.read_csv('gs://de-3/logs/logs.csv')
+        logs_df = pd.read_csv(known_args.bucket + '/logs/logs.csv')
     except:
         #if it doesnt exist yet, create it
         logs_df = pd.DataFrame(columns=['message', 'error', 'price'].extend(list(dicts[0].keys())))
@@ -112,11 +118,11 @@ def predict_perf():
         prep_cars = result['df']
 
         #find the path of the best model aka smallest mean absolute error
-        scores_df = pd.read_csv('gs://de-3/models/scores.csv')
+        scores_df = pd.read_csv(known_args.bucket+ '/models/scores.csv')
         best_model_path = scores_df['model'][scores_df['score'].idxmin()]
 
         client = storage.Client()
-        bucket = client.get_bucket('de-3')
+        bucket = client.get_bucket(known_args.bucket[5:])
         blob = bucket.get_blob(best_model_path)
         if blob is None:
             raise AttributeError('No files to download') 
@@ -136,7 +142,7 @@ def predict_perf():
             logs_df = logs_df.append(log, ignore_index=True)
 
         
-        logs_df.to_csv('gs://de-3/logs/logs.csv', index=False)
+        logs_df.to_csv(known_args.bucket+ '/logs/logs.csv', index=False)
         js_result=json.dumps(dicts, indent=4, sort_keys=False)
 
 
@@ -148,7 +154,7 @@ def predict_perf():
     else:
         #logs_df = logs_df.append({'result': 'error', 'message': result['error'] }, ignore_index=True)
         logs_df = logs_df.append(result , ignore_index=True)
-        logs_df.to_csv('gs://de-3/logs/logs.csv', index=False)
+        logs_df.to_csv(known_args.bucket+ '/logs/logs.csv', index=False)
         
         js_result=json.dumps(result, indent=4, sort_keys=False)
 
