@@ -17,26 +17,12 @@ app.config["DEBUG"] = True
 
 def preprocess(new_cars): 
 
-    #label encode columns
-
-    df_cols = ['manufacturer_acura', 'manufacturer_audi', 'manufacturer_bmw',
-        'manufacturer_buick', 'manufacturer_cadillac', 'manufacturer_chevrolet',
-        'manufacturer_chrysler', 'manufacturer_dodge', 'manufacturer_fiat',
-        'manufacturer_ford', 'manufacturer_gmc', 'manufacturer_honda',
-        'manufacturer_hyundai', 'manufacturer_infiniti', 'manufacturer_jaguar',
-        'manufacturer_jeep', 'manufacturer_kia', 'manufacturer_lexus',
-        'manufacturer_lincoln', 'manufacturer_mazda',
-        'manufacturer_mercedes-benz', 'manufacturer_mercury',
-        'manufacturer_mini', 'manufacturer_mitsubishi', 'manufacturer_nissan',
-        'manufacturer_pontiac', 'manufacturer_ram', 'manufacturer_rover',
-        'manufacturer_saturn', 'manufacturer_subaru', 'manufacturer_tesla',
-        'manufacturer_toyota', 'manufacturer_volkswagen', 'manufacturer_volvo',
-        'fuel_diesel', 'fuel_electric', 'fuel_gas', 'fuel_hybrid', 'fuel_other',
-        'drive_4wd', 'drive_fwd', 'drive_rwd', 'type_SUV', 'type_bus',
-        'type_convertible', 'type_coupe', 'type_hatchback', 'type_mini-van',
-        'type_offroad', 'type_other', 'type_pickup', 'type_sedan', 'type_truck',
-        'type_van', 'type_wagon', 'year', 'odometer', 'condition',
-        'transmission']
+    #read columns created in the training dataframe that the model expects
+    df_cols=pd.read_csv('gs://de-3/data/train_columns.csv')
+    df_cols = df_cols['train_df_columns'].tolist()
+    #remove the price column which is last
+    df_cols.pop()
+    
 
     conditions = {'salvage': 0, 'fair': 1, 'good': 2, 'excellent': 3, 'like new': 4, 'new': 5}
     transmissions = {'manual': 0, 'automatic': 1}
@@ -45,11 +31,20 @@ def preprocess(new_cars):
 
     for car in new_cars:
         if car['condition'] not in list(conditions.keys()):
-            return {'message': 'error', 'error': 'car condition must be one of: salvage, fair, good, excellent, like new, new'}
+            problematic_car = car.copy()
+            problematic_car['message']='error'
+            problematic_car['error']= 'car condition must be one of: salvage, fair, good, excellent, like new, new'
+            return problematic_car
         if car['transmission'] not in list(transmissions.keys()):
-            return {'message': 'error', 'error': 'car transmission must be one of: automatic, manual' }
+            problematic_car = car.copy()
+            problematic_car['message']='error'
+            problematic_car['error']= 'car transmission must be one of: automatic, manual'
+            return problematic_car
         if car['year'] > now.year:
-            return {'message': 'error', 'error': 'car yaear cannot be more than '+ str(now.year) }
+            problematic_car = car.copy()
+            problematic_car['message']='error'
+            problematic_car['error']= 'car year cannot be more than '+ str(now.year)
+            return problematic_car
 
     encoded_df = pd.DataFrame(columns=df_cols)
 
@@ -103,7 +98,16 @@ def predict_perf():
     dicts = json.loads(js_str_)
     #print(type(dict_[0]['sepal_length']))
 
+    try:
+        #read the logs file to add new results
+        logs_df = pd.read_csv('gs://de-3/logs/logs.csv')
+    except:
+        #if it doesnt exist yet, create it
+        logs_df = pd.DataFrame(columns=['message', 'error', 'price'].extend(list(dicts[0].keys())))
+    
     result = preprocess(dicts)
+    
+    
     if result['message'] == 'success':
         prep_cars = result['df']
 
@@ -121,14 +125,18 @@ def predict_perf():
 
         #result_df= prep_cars.copy()
 
-        result = model.predict(prep_cars)
-        print(result)
+        pred_result = model.predict(prep_cars)
+        print(pred_result)
 
         for i, car in enumerate(dicts):
-            car['price']=str(result[i])
+            car['price']=str(pred_result[i])
+            log = car.copy()
+            log['message'] = 'success'
+            log['error']= ''
+            logs_df = logs_df.append(log, ignore_index=True)
 
         
-
+        logs_df.to_csv('gs://de-3/logs/logs.csv', index=False)
         js_result=json.dumps(dicts, indent=4, sort_keys=False)
 
 
@@ -138,6 +146,10 @@ def predict_perf():
         resp.headers['Access-Control-Max-Age'] = '1000'
         return resp
     else:
+        #logs_df = logs_df.append({'result': 'error', 'message': result['error'] }, ignore_index=True)
+        logs_df = logs_df.append(result , ignore_index=True)
+        logs_df.to_csv('gs://de-3/logs/logs.csv', index=False)
+        
         js_result=json.dumps(result, indent=4, sort_keys=False)
 
         resp = Response(js_result, status=200, mimetype='application/json')

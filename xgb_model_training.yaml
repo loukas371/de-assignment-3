@@ -40,7 +40,7 @@ implementation:
       \ -1)\n\n    # parse = urlparse(url=tuned_model_path, allow_fragments=False)\n\
       \n    # if parse.path[0] =='/':\n    #     model_path = parse.path[1:]\n   \
       \ client = storage.Client()\n    bucket = client.get_bucket(bucket_name)\n \
-      \   model = bucket.blob(xgb_model_path)\n    model.upload_from_filename(temp_model_path)\n\
+      \   blob = bucket.blob(xgb_model_path)\n    blob.upload_from_filename(temp_model_path)\n\
       \    return xgb_model_path\n\ndef _serialize_str(str_value: str) -> str:\n \
       \   if not isinstance(str_value, str):\n        raise TypeError('Value \"{}\"\
       \ has type \"{}\" instead of str.'.format(str(str_value), str(type(str_value))))\n\
