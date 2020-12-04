@@ -1,7 +1,9 @@
 numpy
 pandas
+flask
 google-cloud-storage
 scikit-learn
 scipy
 xgboost
 kfp>=1.1.1
+pickle-mixin
